@@ -1,12 +1,11 @@
 name: build-x64
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '*'
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
 
 concurrency:
   group: build-x64-${{ github.ref }}

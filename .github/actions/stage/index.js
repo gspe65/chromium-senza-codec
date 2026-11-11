@@ -5,6 +5,17 @@ import { DefaultArtifactClient } from '@actions/artifact';
 import * as glob from '@actions/glob';
 
 const BUILD_TIMEOUT_EXIT_CODE = 124;
+const START = Date.now();
+
+// Disk and elapsed time at each point of the stage (measurement only).
+async function disk(label) {
+    const minutes = ((Date.now() - START) / 60000).toFixed(1);
+    console.log(`::group::disk ${label} (${minutes} min)`);
+    await exec.exec('powershell', ['-NoProfile', '-Command',
+        'Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{n="UsedGB";e={[math]::Round($_.Used/1GB,1)}}, @{n="FreeGB";e={[math]::Round($_.Free/1GB,1)}} | Format-Table -AutoSize | Out-String -Width 200'],
+        {ignoreReturnCode: true});
+    console.log('::endgroup::');
+}
 
 async function run() {
     process.on('SIGINT', function() {
@@ -21,6 +32,7 @@ async function run() {
 
     const artifact = new DefaultArtifactClient();
     const artifactName = x86 ? 'build-artifact-x86' : (arm ? 'build-artifact-arm' : 'build-artifact');
+    await disk('start');
 
     if (from_artifact) {
         await exec.exec(process.execPath, [`${import.meta.dirname}\\download.js`, artifactName,
@@ -28,6 +40,7 @@ async function run() {
         await exec.exec('7z', ['x', 'C:\\ungoogled-chromium-windows\\build\\artifacts.zip',
             '-oC:\\ungoogled-chromium-windows\\build', '-y']);
         await io.rmRF('C:\\ungoogled-chromium-windows\\build\\artifacts.zip');
+        await disk('after resume');
     }
 
     const args = ['build.py', '--ci', '-j', '2']
@@ -43,6 +56,7 @@ async function run() {
         cwd: 'C:\\ungoogled-chromium-windows',
         ignoreReturnCode: true
     });
+    await disk(`after build.py, exit ${retCode}`);
     if (retCode === 0) {
         core.setOutput('finished', true);
         const globber = await glob.create('C:\\ungoogled-chromium-windows\\build\\ungoogled-chromium*',
@@ -57,7 +71,7 @@ async function run() {
             }
             try {
                 await artifact.uploadArtifact(finalArtifactName, packageList,
-                    'C:\\ungoogled-chromium-windows\\build', {retentionDays: 4, compressionLevel: 0});
+                    'C:\\ungoogled-chromium-windows\\build', {retentionDays: 90, compressionLevel: 0});
                 break;
             } catch (e) {
                 console.error(`Upload artifact failed: ${e}`);
@@ -69,6 +83,9 @@ async function run() {
         await new Promise(r => setTimeout(r, 5000));
         await exec.exec('7z', ['a', '-tzip', 'C:\\ungoogled-chromium-windows\\artifacts.zip',
             'C:\\ungoogled-chromium-windows\\build\\src', '-mx=3', '-mtc=on'], {ignoreReturnCode: true});
+        await disk('after archive');
+        await exec.exec('powershell', ['-NoProfile', '-Command',
+            '(Get-Item C:\\ungoogled-chromium-windows\\artifacts.zip).Length / 1GB'], {ignoreReturnCode: true});
         for (let i = 0; i < 5; ++i) {
             try {
                 await artifact.deleteArtifact(artifactName);

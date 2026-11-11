@@ -354,6 +354,10 @@ jobs:
   complete:
     needs: build-16
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Ensure build finished
         run: |
@@ -361,3 +365,14 @@ jobs:
             echo "Build did not finish after 16 stages."
             exit 1
           fi
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: chromium
+          path: chromium
+      - name: Hashes
+        run: sha256sum chromium/* | tee sha256.txt
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: 'chromium/*'
