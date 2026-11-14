@@ -1,10 +1,11 @@
 # Chromium senza codec proprietari
 
-Copia della procedura di [ungoogled-chromium-windows](https://github.com/ungoogled-software/ungoogled-chromium-windows) all'etichetta `157.0.8103.38-1.1`, per costruire Chromium per Windows x64 **senza codec proprietari** (niente H.264, H.265, AAC) per [MyDev](https://github.com/gspe65/MyDev). Non è una distribuzione di ungoogled-chromium e non ne pubblica le release.
+Copia della procedura di [ungoogled-chromium-windows](https://github.com/ungoogled-software/ungoogled-chromium-windows) all'etichetta `157.0.8103.38-1.1`, per costruire Chromium per Windows x64 **senza codec proprietari** (niente H.264, H.265, AAC) per [MyDev](https://github.com/gspe65/MyDev). Non è una distribuzione di ungoogled-chromium: le release di questo repository portano il pacchetto costruito qui, con la sua attestazione di provenienza.
 
 Differenze dalla procedura originale:
 
-- `flags.windows.gn`: `proprietary_codecs=false`, `ffmpeg_branding="Chromium"`, `enable_mse_mpeg2ts_stream_parser=false` (senza i codec proprietari Chromium lo vuole spento), `enable_widevine=false`;
+- `flags.windows.gn`: `proprietary_codecs=false`, `ffmpeg_branding="Chromium"`, `enable_mse_mpeg2ts_stream_parser=false` (senza i codec proprietari Chromium lo vuole spento), `enable_widevine=false`, `is_component_ffmpeg=true` (la FFmpeg in un `ffmpeg.dll` separato, che si può sostituire);
+- `patches/senza-codec/ffmpeg-separato.patch`: mette `ffmpeg.dll` nel pacchetto e la ammette, come `chrome.dll`, nei processi in sandbox che accettano solo librerie firmate (senza, nessuna pagina si apre);
 - `.github/workflows/`: solo x64, lanciata a mano; tolti x86, arm e la pubblicazione della release; il lavoro finale calcola le impronte del pacchetto e ne firma l'attestazione di provenienza;
 - `.github/actions/stage/index.js`: la misura del disco in ogni lavoro; il pacchetto resta 90 giorni invece di 4.
 

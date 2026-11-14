@@ -1,0 +1,38 @@
+# With is_component_ffmpeg=true the FFmpeg is built as ffmpeg.dll, a load-time import of chrome.dll.
+# Put it in the package (FILES.cfg) and allow it, like chrome.dll, in the sandboxed processes that start
+# with code integrity (only Microsoft-signed libraries plus an explicit list): without it no page opens.
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -5568,6 +5568,18 @@
+     }
+   }
+ 
++  // With is_component_ffmpeg=true, ffmpeg.dll is a load-time import of
++  // chrome.dll: allow it like chrome.dll, or the process cannot start.
++  {
++    const base::FilePath ffmpeg_path = GetModulePath(L"ffmpeg.dll");
++    if (base::PathExists(ffmpeg_path)) {
++      result = config->AllowExtraDll(ffmpeg_path.value());
++      if (result != sandbox::SBOX_ALL_OK) {
++        return false;
++      }
++    }
++  }
++
+   // Allow loading the WebNN WebGPU accelerator for renderers when the feature
+   // is enabled.
+ #if BUILDFLAG(WEBNN_USE_WEBGPU_ACCELERATOR)
+--- a/chrome/tools/build/win/FILES.cfg
++++ b/chrome/tools/build/win/FILES.cfg
+@@ -69,6 +69,11 @@
+     'filegroup': ['default', 'symsrc'],
+   },
+   {
++    'filename': 'ffmpeg.dll',
++    'buildtype': ['official'],
++    'filegroup': ['default'],
++  },
++  {
+     'filename': 'chrome_renderer.dll',
+     'buildtype': ['official'],
+     'filegroup': ['default', 'symsrc'],

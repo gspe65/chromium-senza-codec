@@ -17,3 +17,4 @@ enable_rust=true
 enable_mse_mpeg2ts_stream_parser=false
 rust_crubit_root="//third_party/rust-toolchain/crubit"
 enable_widevine=false
+is_component_ffmpeg=true
